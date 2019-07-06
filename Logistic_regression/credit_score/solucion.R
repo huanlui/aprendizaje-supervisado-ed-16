@@ -1,5 +1,6 @@
 rm(list=ls())
-
+install.packages('data.table')
+library('data.table')
 #load dataset, you can use choose file also
 my_data<-as.data.frame(fread("./data_in/data_scoring.csv",sep=";"))
 # my_data<-as.data.frame(fread(choose.files()))
@@ -175,7 +176,7 @@ stepAIC(glm(Y~X1+X2+X3+X4+X5+X6+X7,binomial(link = "logit"), data = my_data_trai
 #########################Pregunta 3###############################
 
 exp(confint(m8,level=0.9))
-                                     
+
 ##########################Pregunta 4###################################
 
 exp(coefficients(m8))
@@ -195,19 +196,33 @@ pred_cutoff<-function(epsilon,pred){
   return(result)
 }
 
-
+# Calculo predicciones cogiendo distintos umbrales
 pred_cutoff_03 <- pred_cutoff(0.3,my_pred)
 pred_cutoff_05 <- pred_cutoff(0.5,my_pred)
 pred_cutoff_08 <- pred_cutoff(0.8,my_pred)
 
+#Ahora voy a ver las matrices de confusión para cada uno de los umbrales, a ver
+#si están bien
+#Es decir, voy a comparar mi predcción con mi real (my_data_train)
 conf_matrix_03<-table(pred=pred_cutoff_03,actual= my_data_train$Y)
 conf_matrix_05<-table(pred=pred_cutoff_05,actual= my_data_train$Y)
 conf_matrix_08<-table(pred=pred_cutoff_08,actual= my_data_train$Y)
 
+conf_matrix_03
+conf_matrix_05
+conf_matrix_08
 
-sum(diag(conf_matrix_03))/sum(conf_matrix_03)
+#Diagnoal/Total = Accuracy = TP + TN / TODO
+#TPR= TP / P. Los que he dicho que son positivos entre todos los positivos. 
+#TNR= TN / N. 
+#Un model es el que tiene un alto accurddaay y una tasa de TPR y TNR balanceados. 
+# Ver https://en.wikipedia.org/wiki/Sensitivity_and_specificity
+
+accuracy = sum(diag(conf_matrix_03))/sum(conf_matrix_03)
+accuracy
 conf_matrix_03[2,2]/(conf_matrix_03[2,2]+conf_matrix_03[1,2]) #tpr
 conf_matrix_03[1,1]/(conf_matrix_03[1,1]+conf_matrix_03[2,1]) #tnr
+#Este modelo me está dando "siempre quelluevue"
 
 sum(diag(conf_matrix_05))/sum(conf_matrix_05)
 conf_matrix_05[2,2]/(conf_matrix_05[2,2]+conf_matrix_05[1,2]) #tpr
@@ -217,21 +232,29 @@ sum(diag(conf_matrix_08))/sum(conf_matrix_08)
 conf_matrix_08[2,2]/(conf_matrix_08[2,2]+conf_matrix_08[1,2]) #tpr
 conf_matrix_08[1,1]/(conf_matrix_08[1,1]+conf_matrix_08[2,1]) #tnr
 
-############################Pregunta 7#######################################
+#De momento me da el 0ñ5 unos valores de prt y tnr más balanceados. 
 
+############################Pregunta 7#######################################
+install.packages('verification')
+library('verification')
 
 r<-roc.area(my_data_train$Y,my_pred)
 roc.plot(my_data_train$Y,my_pred,main=paste0("Curva ROC con AUC=", r$A))
 
+#AUC: Area bajo la curva ROC. Curva roc, pinta la hit rate frente a la false alarm rate. 
+#Si tengo 
+
 
 ############################Pregunta 8#######################################
 
+#¿Cómo buscamos el mejor umbral
 epsilon<-seq(length=100, from=0, to=1)
 
 df<-data.frame(accuracy=rep(0,100),epsilon)
 Y<-my_data_train$Y
 
-
+# Cojo umbral de uno en 1 y voy probando
+#el que me maximize el accuracy
 for(i in 1:100){
   print(i)
   PYeq1<-ifelse(my_pred<epsilon[i],0,1)
@@ -241,7 +264,7 @@ for(i in 1:100){
 }
 
 plot(epsilon,df$accuracy,xlab="Epsilon value",ylab="Accuracy",type="l",main="Optimizaci\u00f3n accuracy \n datos de entrenamiento")
-df[df$accuracy==max(df$accuracy),]
+df[df$accuracy==max(df$accuracy),] #salen dos valores que maximiazn.
 
 
 PYeq1<-ifelse(my_pred<df[df$accuracy==max(df$accuracy),]$epsilon,0,1)
@@ -262,30 +285,47 @@ roc.plot(my_data_train$Y,my_pred,main=paste0("Curva ROC con AUC=", r$A))
 
 ############################Pregunta 9#######################################
 
-
+# Como tenemos buena predicción para los positivos, pero peor para el mínino, convendría
+# balancear las clases. Para ello, vamos a entranar un modelo con una muesdta que tenga
+# un mismo número de negativos y positivos. 
+# De los buenos, me voy a coger sólo unos cuantos para tener el mismo número de los malos. 
 #### a) Balanceo de muestras
-
 
 rm(list=ls())
 
 #load dataset, you can use choose file also
 my_data<-as.data.frame(fread("./data_in/data_scoring.csv",sep=";"))
+#convertimos texto a 1 y 0, para que sea más matemático todo
 my_data$Y<-ifelse(my_data$Y=="malo",0,1)
-
-my_data<-my_data[sample(1:nrow(my_data)),]
-
+# importante randomizar para no depender de orden, le cambiamos el orden.
+my_data<-my_data[sample(1:nrow(my_data)),] 
+# cogemos 20% para test
 my_data_test<-my_data[1:(nrow(my_data)*0.2),]
+rownames(my_data)#los nonbres del todo el dataset
+rownames(my_data_test)#los nombres del dataset de tests
+setdiff(rownames(my_data),rownames(my_data_test)) # dame del todoal los que no estén en test
+#Y ahora , el de entrenamiento
 my_data_train<-my_data[setdiff(rownames(my_data),rownames(my_data_test)),]
+#De entrenamiento, cógeme solo los malos
 my_data_train_0<-my_data_train[which(my_data_train$Y==0),]
+# Y los bueno.s
 my_data_train_1<-my_data_train[which(my_data_train$Y==1),]
 
-
+#cógeme de los buenos sólo tantos como haya malos
 my_sample<-sample(rownames(my_data_train_1),nrow(my_data_train_0))
+#meto esos buenos en el de entrenamiento
 my_data_train_sampled<-my_data_train[my_sample,]
+#añado los malos
 my_data_train<-rbind(my_data_train_sampled,my_data_train_0)
 table(my_data_train$Y)
 
+#SMOTE: otra técnica para balancear. En lugar de quitas, creo datos sintéticos.
+
+#RESUMEN: SI NO BALANCEAS, SE SOBREENTRENA LA PARTE DOMINANTE. 
+
+#y los que me sobran buenosmloes lelvo al de test (para no perder esos datos)
 my_data_test<-my_data[setdiff(rownames(my_data),rownames(my_data_train)),]
+
 nrow(my_data_train)+nrow(my_data_test)==nrow(my_data)
 print(paste0("Filas train=",nrow(my_data_train),"     Filas test=",nrow(my_data_test)))
 
@@ -325,7 +365,7 @@ confusion_matrix[1,2]/(confusion_matrix[1,2]+confusion_matrix[2,2]) #fnr
 confusion_matrix[2,2]/(confusion_matrix[2,2]+confusion_matrix[1,2]) #tpr
 confusion_matrix[1,1]/(confusion_matrix[2,1]+confusion_matrix[1,1]) #tnr
 
-
+#Ahora en test:
 my_pred<-predict(my_model,newdata= my_data_test,type = "response")
 Y<-my_data_test$Y
 PYeq1<-ifelse(my_pred<epsilon_optimal,0,1)
@@ -336,7 +376,7 @@ tnr_test<-confusion_matrix[1,1]/(confusion_matrix[2,1]+confusion_matrix[1,1]) #t
 
 ### d) Cross-validation
 
-
+#K-Fold cross validation
 
 
 
@@ -345,12 +385,14 @@ rm(list=ls())
 #load dataset, you can use choose file also
 my_data<-as.data.frame(fread("./data_in/data_scoring.csv",sep=";"))
 my_data$Y<-ifelse(my_data$Y=="malo",0,1)
-
+#randomizo
 my_data<-my_data[sample(1:nrow(my_data)),]
 
 
-n_fold<-5
+n_fold<-5 # es 5 es el K
 
+#creo dos dataframes vacías con columnas accuracy, epsion, ptr,tnr y AUC. 
+# y cinco columnas (vamos a hacer 5 veces el algortimo de arriba)
 my_performance_data_train<-data.frame(accuracy=rep(0,n_fold),epsilon=rep(0,n_fold),tpr=rep(0,n_fold),tnr=rep(0,n_fold),AUC=rep(0,n_fold))
 my_performance_data_test<-data.frame(accuracy=rep(0,n_fold),epsilon=rep(0,n_fold),tpr=rep(0,n_fold),tnr=rep(0,n_fold),AUC=rep(0,n_fold))
 
@@ -360,17 +402,20 @@ for(i in 1:n_fold){
   print(i)
   
   #Balanceo clasess
-  
+  #Ventana de datos, ver imange  de k-fold
   my_data_test<-my_data[((i-1)*nrow(my_data)/n_fold+1):(i*nrow(my_data)/n_fold),]
+  #Restantes para el training.
   my_data_train<-my_data[setdiff(rownames(my_data),rownames(my_data_test)),]
+  
   my_data_train_0<-my_data_train[which(my_data_train$Y==0),]
   my_data_train_1<-my_data_train[which(my_data_train$Y==1),]
   
-  
+  #Balanceo, (undersampling)
   my_sample<-sample(rownames(my_data_train_1),nrow(my_data_train_0))
   my_data_train_sampled<-my_data_train[my_sample,]
+  #a los datos de entredamientole añados los sapleados de 1 más todos lode 0
   my_data_train<-rbind(my_data_train_sampled,my_data_train_0)
-  
+  #para test, los demas
   my_data_test<-my_data[setdiff(rownames(my_data),rownames(my_data_train)),]
 
 
@@ -380,10 +425,11 @@ for(i in 1:n_fold){
 
   
   #Prediccion y cutoff optimo
+  #Precit coge los valores y los pasa por el modelo. 
   my_pred<-predict(my_model,newdata= my_data_train,type = "response")
   
   
-  
+  #Vamos a budcar el cutoff optimo usando pasos de 1 en 1. 
   epsilon<-seq(length=100, from=0, to=1)
   
   df<-data.frame(accuracy=rep(0,100),epsilon)
@@ -397,7 +443,7 @@ for(i in 1:n_fold){
     df$accuracy[j]<-sum(diag(confusion_matrix))/(sum(confusion_matrix))
   }
   
-  
+  #Me quedo con el valor de accuracy mejor(de entre esos 100 umbrales, el que me da mejor)
   my_performance_data_train$accuracy[i]<-unique(max(df$accuracy))
   
   epsilon_optimal<-df[df$accuracy==max(df$accuracy),]$epsilon[1]
@@ -408,10 +454,10 @@ for(i in 1:n_fold){
   confusion_matrix<-table(PYeq1,Y)
   my_performance_data_train$tpr[i]<-confusion_matrix[2,2]/(confusion_matrix[2,2]+confusion_matrix[1,2]) #tpr
   my_performance_data_train$tnr[i]<-confusion_matrix[1,1]/(confusion_matrix[2,1]+confusion_matrix[1,1]) #tnr
-  my_performance_data_train$AUC[i]<-roc.area(my_data_train$Y,my_pred)$A
+  # no soy capaz de instalar my_performance_data_train$AUC[i]<-roc.area(my_data_train$Y,my_pred)$A
   
   
-  
+  #ahora paso el modelo con le umbral oṕtimo a los datos de test
   my_pred<-predict(my_model,newdata= my_data_test,type = "response")
   Y<-my_data_test$Y
   PYeq1<-ifelse(my_pred<epsilon_optimal,0,1)
@@ -421,13 +467,14 @@ for(i in 1:n_fold){
   
   my_performance_data_test$tpr[i]<-confusion_matrix[2,2]/(confusion_matrix[2,2]+confusion_matrix[1,2]) #tpr
   my_performance_data_test$tnr[i]<-confusion_matrix[1,1]/(confusion_matrix[2,1]+confusion_matrix[1,1]) #tnr
-  my_performance_data_test$AUC[i]<-roc.area(my_data_test$Y,my_pred)$A
+ # my_performance_data_test$AUC[i]<-roc.area(my_data_test$Y,my_pred)$A
   
   
 }
 
-sapply(my_performance_data_train, mean)
+sapply(my_performance_data_train, mean) # cogemos la media porque esta es sensisble a outliers
 sapply(my_performance_data_test, mean)
+
 
 
 
@@ -437,7 +484,6 @@ sapply(my_performance_data_test, mean)
 # my_new_data<-data.frame(X1="cuenta.buena",X2= 33, X3="pre.bueno", X4="profesional",X5=2764, X6="mujer", X7="solo")
 
 my_new_data<-data.frame(X1="cuenta.buena",X2=24,X3="pre.bueno",X4="personal",X5=3000,X6="hombre",X7="no.solo")
-# my_new_data<-data.frame(X1="cuenta.mala",X2=60,X3="pre.bueno",X4="profesional",X5=10000,X6="hombre",X7="no.solo")
 my_pred<-predict(my_model,newdata= my_new_data,type = "response")
 PYeq1<-ifelse(my_pred<epsilon_optimal,0,1)
 
@@ -447,9 +493,9 @@ if(PYeq1==1){print("¡Enhorabuena! su cr\u00e9dito ha sido aprobado")}else{"Lo s
 ############################ Pregunta 11 #######################################
 
 
-#TAREA
-my_model_all_var<-glm(Y~X1+X2+X3+X4+X5+X6+X7, binomial(link = "logit"), data = my_data)
-exp(coefficients(my_model_all_var))
+
+my_model<-glm(Y~X1+X2+X3+X4+X5+X6+X7, binomial(link = "logit"), data = my_data)
+exp(coefficients(my_model))
 
 
 
