@@ -24,8 +24,12 @@ if (!require("imager")){install.packages("imager",verbose = F) ; library("imager
 
 
 #----- Corra estas lineas en una sola ejecucion -----#
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install()
+
 source("http://bioconductor.org/biocLite.R")
-biocLite("rhdf5")
+BiocManager("rhdf5")
 a
 library(rhdf5)
 #----- Fin: Corra estas lineas en una sola ejecucion -----#
@@ -43,8 +47,8 @@ library(rhdf5)
 
 h5ls("./data_in/train_catvnoncat.h5")
 
-my_data_train_x <- h5read("./data_in/train_catvnoncat.h5","train_set_x")
-my_data_train_y <- h5read("./data_in/train_catvnoncat.h5","train_set_y")
+my_data_train_x <- h5read("./data_in/train_catvnoncat.h5","train_set_x")  # los valores RGB
+my_data_train_y <- h5read("./data_in/train_catvnoncat.h5","train_set_y") # Si es gato o no
 
 
 
@@ -63,6 +67,7 @@ my_data_test_y <- h5read("./data_in/test_catvnoncat.h5","test_set_y")
 
 n<-3
 
+#en la primera está el rojo (lo hizo probando).
 r <- matrix(my_data_train_x[1,,,n]/255,ncol=64)
 g <- matrix(my_data_train_x[2,,,n]/255,ncol=64)
 b <- matrix(my_data_train_x[3,,,n]/255,ncol=64)
@@ -86,6 +91,7 @@ grid.raster(col, interpolate=FALSE)
 
 my_data_train<-data.frame(matrix(ncol=64*64*3))
 
+#preprocesamos datos: aplanamos rgb en una sola matriz. 
 
 for(i in 1:209){
   
@@ -95,16 +101,17 @@ for(i in 1:209){
   g <- matrix(my_data_train_x[2,,,i],ncol=64)
   b <- matrix(my_data_train_x[3,,,i],ncol=64)
   
-  my_data_train[i,]<-c(as.vector(r),as.vector(g),as.vector(b))
+  my_data_train[i,]<-c(as.vector(r),as.vector(g),as.vector(b))  
 
   
 }
 
-my_data_train<-cbind(Y=my_data_train_y,my_data_train)
+my_data_train<-cbind(Y=my_data_train_y,my_data_train) #le concatenamos la columna Y. 
 
 
 #Test data
 
+#hago lo mismo para el conjunto de test. 
 my_data_test<-data.frame(matrix(ncol=64*64*3))
 
 for(i in 1:50){
