@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1549923120446.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1137878327",
+    "id" : "6AFBEAD1",
+    "lastKnownWriteTime" : 1549924852,
+    "last_content_update" : 1549924852479,
+    "path" : "C:/Users/Henry N/Desktop/KSchool/my_course/day_1/Linear_regression/borrador.R",
+    "project_path" : "borrador.R",
+    "properties" : {
+        "cursorPosition" : "241,0",
+        "scrollLine" : "223",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
