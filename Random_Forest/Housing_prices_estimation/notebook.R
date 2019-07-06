@@ -3,21 +3,41 @@ rm(list=ls())
 
 #-------------- Pregunta 1: Lectura de datos ----------#
 
-library(NULL)
-data(package="NULL")
+# 1)	Mediante la librería MASS cargue los datos de Boston.
+library("MASS")
+data(package="MASS")
 boston<-Boston
 dim(boston)
 names(boston)
 
 
 #-------------- Pregunta 2: datos de train ----------#
+# 2)	Separe el dataset en un conjunto de train de 300 registros y el resto tómelo como test.
 set.seed(101)
-train = sample(1:nrow(NULL), NULL)
+#randomizo
+boston<-boston[sample(1:nrow(boston)),] # sample sin  parámetro, coge todos
+#Cojo trescientos para entrenamiento (estoy haciendo doble random que no haría falta. )
+train = sample(1:nrow(boston), 300) # ojo, train es un conjunto de índices
 
 
 #-------------- Pregunta 3: Ajuste del modelo ----------#
-rf.boston = randomForest(NULL, data = NULL, subset = NULL)
+# medv~. Significa que quiero predecir la variable medv. el . es que no quiero eliminar variables
+# No elimino ningunaporque el mismo algortirmo de random forest me cogerá aleatoriamente las variables
+# para cada árbol y luego combinará. 
+#Subset dice los índices a coger para entrenar. 
+rf.boston = randomForest(medv~., data = boston, subset = train)
 rf.boston
+
+"
+ randomForest(formula = medv ~ ., data = boston, subset = train) 
+               Type of random forest: regression
+                     Number of trees: 500 esto eslo que hace por defecto, la función randomForest te permite personalizarlo
+No. of variables tried at each split: 4  ha usado 4 variables para entrenar cada 
+
+          Mean of squared residuals: 12.31419 . 
+          Es la media de los errores cuadráticos. Intentamos minimizarla
+                    % Var explained: 85.35
+"
 
 
 
